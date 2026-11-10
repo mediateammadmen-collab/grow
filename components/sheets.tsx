@@ -1,10 +1,10 @@
 'use client';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { BUCKET_COLOR, CATS, cleanBackup, HTYPES, makeEmpty, makeSeed, pad, uid, type HoldingType, type State, type Tx, type TxType } from '@/lib/data';
+import { BUCKET_COLOR, CATS, HTYPES, pad, uid, type HoldingType, type Tx, type TxType } from '@/lib/data';
 import { accName, allocation, avgMonthly, catTotals, emi, money, moneyT, monthTx, nowKey, nowLocal, shiftMonth, toPaisa, toTakaStr } from '@/lib/calc';
-import { downloadFile, useGrow, type SheetSpec } from '@/lib/store';
-import { Icon } from './ui';
+import { displayName, downloadFile, useGrow, type SheetSpec } from '@/lib/store';
+import { Avatar, Icon, SYNC_LABEL } from './ui';
 
 function Sheet({ title, children }: { title: string; children: ReactNode }) {
   const { closeSheet } = useGrow();
@@ -71,7 +71,7 @@ function TxSheet({ tx }: { tx?: Partial<Tx> }) {
             <div className="f"><label htmlFor="f-sub">Subcategory</label><select id="f-sub" value={sub} onChange={e => set({ sub: e.target.value })}>{subs.map(c => <option key={c}>{c}</option>)}</select></div>
           </>}
         <div className="f"><label htmlFor="f-amt">Amount (৳)</label><input id="f-amt" className="big" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0" value={d.amount} onChange={e => set({ amount: e.target.value })} autoFocus={!d.id} /></div>
-        <div className="f"><label htmlFor="f-note">Note</label><input id="f-note" type="text" placeholder="What was it for?" value={d.note} onChange={e => set({ note: e.target.value })} /></div>
+        <div className="f"><label htmlFor="f-note">Note</label><input id="f-note" type="text" maxLength={200} placeholder="What was it for?" value={d.note} onChange={e => set({ note: e.target.value })} /></div>
         <div className="err" role="alert">{err}</div>
         <div className="actions">
           <button className="btn full" type="submit">Save</button>
@@ -102,7 +102,7 @@ function HoldSheet({ id }: { id?: string }) {
   return (
     <Sheet title={id ? 'Edit investment' : 'Add investment'}>
       <form onSubmit={save} noValidate>
-        <div className="f"><label htmlFor="h-name">Name</label><input id="h-name" type="text" placeholder="e.g. Equity mutual fund" value={name} onChange={e => setName(e.target.value)} /></div>
+        <div className="f"><label htmlFor="h-name">Name</label><input id="h-name" type="text" maxLength={200} placeholder="e.g. Equity mutual fund" value={name} onChange={e => setName(e.target.value)} /></div>
         <div className="f"><label htmlFor="h-type">Type</label><select id="h-type" value={type} onChange={e => setType(e.target.value as HoldingType)}>{Object.keys(HTYPES).map(t => <option key={t}>{t}</option>)}</select></div>
         <div className="f"><label htmlFor="h-inv">Invested (৳)</label><input id="h-inv" className="big" type="number" inputMode="decimal" min="0" value={inv} onChange={e => setInv(e.target.value)} /></div>
         <div className="f"><label htmlFor="h-val">Value now (৳)</label><input id="h-val" className="big" type="number" inputMode="decimal" min="0" value={val} onChange={e => setVal(e.target.value)} /></div>
@@ -118,64 +118,55 @@ function HoldSheet({ id }: { id?: string }) {
 
 /* ---------- settings ---------- */
 function SettingsSheet() {
-  const { S, update, replace, closeSheet, toast, openSheet } = useGrow();
+  const { S, user, sync, update, closeSheet, toast, signOut } = useGrow();
   const router = useRouter();
-  const [ob, setOb] = useState<Record<string, string>>(() => Object.fromEntries(S.accounts.map(a => [a.id, String(a.open / 100)])));
+  const [ob, setOb] = useState<Record<string, string>>(() => Object.fromEntries(S.accounts.map(a => [a.id, a.open ? String(a.open / 100) : ''])));
   const [armed, setArmed] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const keep = { hide: S.hide, entered: true };
+  const [busy, setBusy] = useState(false);
   const arm = (k: string, fn: () => void) => { if (armed !== k) return setArmed(k); setArmed(null); fn(); };
-  const stamp = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const name = displayName(user);
+  const avatar = (user?.user_metadata as Record<string, string> | undefined)?.avatar_url;
+  const viaGoogle = user?.app_metadata?.provider === 'google' || (user?.identities ?? []).some(i => i.provider === 'google');
   const csv = () => {
     const q = (v: unknown) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
     const rows = [['Date', 'Type', 'Category', 'Subcategory', 'Account', 'To account', 'Amount', 'Note']]
       .concat(S.txs.slice().sort((a, b) => a.date.localeCompare(b.date)).map(t => [t.date.replace('T', ' '), t.type, t.cat, t.sub, accName(S, t.account), t.to ? accName(S, t.to) : '', String(t.amount / 100), t.note]));
-    downloadFile('grow-transactions.csv', rows.map(r => r.map(q).join(',')).join('\n'), 'text/csv'); toast('CSV downloaded');
+    const d = new Date();
+    downloadFile(`grow-transactions-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.csv`, rows.map(r => r.map(q).join(',')).join('\n'), 'text/csv'); toast('CSV downloaded');
   };
-  const onFile = (f?: File) => {
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = () => { try { const c = cleanBackup(JSON.parse(String(r.result))); if (!c) throw 0; openSheet({ kind: 'restore', data: c }); } catch { toast('That file is not a Grow backup'); } };
-    r.onerror = () => toast('Could not read that file');
-    r.readAsText(f);
+  const saveOB = () => {
+    const bad = S.accounts.find(a => ob[a.id] && !isFinite(parseFloat(ob[a.id])));
+    if (bad) return toast(`Check the amount for ${bad.name}`);
+    update(s => ({ ...s, accounts: s.accounts.map(a => ({ ...a, open: ob[a.id] ? toPaisa(ob[a.id]) : 0 })) }));
+    closeSheet(); toast('Balances saved');
   };
+  const out = async () => { setBusy(true); await signOut(); closeSheet(); router.replace('/welcome'); };
   return (
     <Sheet title="Settings">
-      <p className="note">Your data is saved in this browser only. Back it up before you clear browser data or switch devices.</p>
-      <div className="lbl" style={{ margin: '14px 0 2px' }}>Opening balances</div>
-      {S.accounts.map(a => <div className="f" key={a.id}><label htmlFor={'ob-' + a.id}>{a.name}</label><input id={'ob-' + a.id} className="big" type="number" inputMode="decimal" value={ob[a.id] ?? ''} onChange={e => setOb(o => ({ ...o, [a.id]: e.target.value }))} /></div>)}
+      <div className="acct">
+        <Avatar name={name} url={avatar} size={44} />
+        <div className="mid"><b>{name}</b><span className="muted small">{user?.email}{viaGoogle ? ' · Google' : ''}</span><span className={'syncdot ' + sync}>{SYNC_LABEL[sync]}</span></div>
+      </div>
+
+      <div className="lbl" style={{ margin: '18px 0 2px' }}>Opening balances</div>
+      {S.accounts.map(a => <div className="f" key={a.id}><label htmlFor={'ob-' + a.id}>{a.name}</label><input id={'ob-' + a.id} className="big" type="number" inputMode="decimal" placeholder="0" value={ob[a.id] ?? ''} onChange={e => setOb(o => ({ ...o, [a.id]: e.target.value }))} /></div>)}
       <p className="note" style={{ marginTop: 6 }}>What each account held before your first entry. Balances and net worth are built from these plus your entries.</p>
-      <div className="actions"><button className="btn full" onClick={() => { update(s => ({ ...s, accounts: s.accounts.map(a => ({ ...a, open: toPaisa(ob[a.id] || '0') || 0 })) })); closeSheet(); toast('Balances saved'); }}>Save balances</button></div>
+      <div className="actions"><button className="btn full" onClick={saveOB}>Save balances</button></div>
 
       <div className="lbl" style={{ margin: '22px 0 8px' }}>Your data</div>
-      <div className="actions two">
-        <button className="btn ghost" onClick={() => { downloadFile(`grow-backup-${stamp()}.json`, JSON.stringify(S), 'application/json'); toast('Backup downloaded'); }}>Back up</button>
-        <button className="btn ghost" onClick={() => fileRef.current?.click()}>Restore</button>
-        <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={e => { onFile(e.target.files?.[0]); e.target.value = ''; }} />
-        <button className="btn ghost" onClick={csv}>Export CSV</button>
-        {S.sample
-          ? <button className="btn ghost" onClick={() => arm('clear', () => { replace({ ...makeEmpty(), ...keep }); closeSheet(); toast('Example data cleared'); })}>{armed === 'clear' ? 'Tap again' : 'Clear examples'}</button>
-          : <button className="btn ghost" onClick={() => arm('load', () => { replace({ ...makeSeed(), ...keep }); closeSheet(); toast('Example data loaded'); })}>{armed === 'load' ? 'Tap again: replace' : 'Load examples'}</button>}
-      </div>
-
-      <div className="lbl" style={{ margin: '22px 0 2px' }}>Account</div>
-      <div className="f" style={{ gridTemplateColumns: '1fr auto' }}><span>Not signed in <span className="muted small">· accounts coming soon</span></span><button type="button" className="link" onClick={() => { closeSheet(); router.push('/welcome'); }}>Welcome screen</button></div>
+      <p className="note">Everything is saved to your Grow account and syncs to any device you log in on.</p>
+      <div className="actions"><button className="btn ghost full" onClick={csv} disabled={!S.txs.length}>Export entries as CSV</button></div>
 
       <div className="lbl" style={{ margin: '22px 0 4px' }}>About</div>
-      <p className="note">Grow 2.0. Ask Grow answers from a built-in money guide using the numbers on this device. Nothing is sent anywhere. Grow gives general information, not financial, tax or legal advice. <a className="link" href="/privacy.html" target="_blank" rel="noopener">Privacy policy</a></p>
-      <div className="actions" style={{ marginTop: 18 }}>
-        <button className="btn danger full" onClick={() => arm('erase', () => { replace({ ...makeEmpty(), ...keep }); closeSheet(); toast('All data erased'); })}>{armed === 'erase' ? 'Tap again: erase everything' : 'Erase all my data'}</button>
-      </div>
-    </Sheet>
-  );
-}
+      <p className="note">Grow 2.0. Ask Grow answers from a built-in money guide using your own numbers. Grow gives general information, not financial, tax or legal advice. <a className="link" href="/privacy.html" target="_blank" rel="noopener">Privacy policy</a></p>
 
-function RestoreSheet({ data }: { data: State }) {
-  const { replace, closeSheet, toast } = useGrow();
-  return (
-    <Sheet title="Restore this backup?">
-      <p>This backup has <b>{data.txs.length}</b> entries and <b>{data.holdings.length}</b> investments. Restoring replaces everything in this browser.</p>
-      <div className="actions"><button className="btn full" onClick={() => { replace(data); closeSheet(); toast('Backup restored'); }}>Replace my data</button><button className="btn ghost full" onClick={closeSheet}>Cancel</button></div>
+      <div className="actions" style={{ marginTop: 18 }}>
+        <button className="btn ghost full" onClick={out} disabled={busy}>{busy ? 'Signing out…' : 'Sign out'}</button>
+        <button className="btn danger full" onClick={() => arm('erase', () => {
+          update(s => ({ ...s, txs: [], holdings: [], budgets: {}, accounts: s.accounts.map(a => ({ ...a, open: 0 })) }));
+          closeSheet(); toast('All entries erased');
+        })}>{armed === 'erase' ? 'Tap again: erase all entries, investments and budgets' : 'Erase all my data'}</button>
+      </div>
     </Sheet>
   );
 }
@@ -301,7 +292,6 @@ export function SheetHost() {
     case 'tx': return <TxSheet key={k} tx={s.tx} />;
     case 'hold': return <HoldSheet key={k} id={s.id} />;
     case 'settings': return <SettingsSheet />;
-    case 'restore': return <RestoreSheet data={s.data} />;
     case 'loan': return <LoanSheet />;
     case 'card': return <CardSheet />;
     case 'invest': return <InvestSheet />;

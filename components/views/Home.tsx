@@ -1,9 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
-import { BUCKET_COLOR, CATS, HTYPES, makeSeed } from '@/lib/data';
+import { BUCKET_COLOR, CATS, HTYPES } from '@/lib/data';
 import { allocation, avgMonthly, balances, catTotals, compact, invTotals, lastMonths, MILESTONES, money, monthLabel, monthSeries, monthsTo, monthTx, netWorth, nowKey, sum } from '@/lib/calc';
-import { useGrow } from '@/lib/store';
+import { displayName, useGrow } from '@/lib/store';
 import { BarChart, Donut, Empty, Icon, TxRow } from '../ui';
 
 function Track({ nw }: { nw: number }) {
@@ -21,7 +21,8 @@ function Track({ nw }: { nw: number }) {
 }
 
 export function HomeView() {
-  const { S, update, openSheet, replace } = useGrow();
+  const { S, update, openSheet, user } = useGrow();
+  const first = displayName(user).split(' ')[0];
   const [seg, setSeg] = useState<'cash' | 'inv'>('cash');
   const mk = nowKey(), cur = monthTx(S, mk), inc = sum(cur, 'income'), exp = sum(cur, 'expense'), flow = inc - exp;
   const nw = netWorth(S), inv = invTotals(S), bal = balances(S);
@@ -46,14 +47,12 @@ export function HomeView() {
     <div className="stack">
       <header className="head" style={{ marginBottom: 0 }}>
         <div className="brand mob"><span className="logo"><Icon name="chart" /></span><h1>Grow</h1></div>
-        <h1 className="desk">Overview</h1>
+        <h1 className="desk">{first ? `Hi, ${first}` : 'Overview'}</h1>
         <div className="head-actions">
           <button className="iconbtn mob" onClick={() => openSheet({ kind: 'settings' })} aria-label="Settings"><Icon name="gear" /></button>
           <button className="iconbtn solid mob" onClick={() => openSheet({ kind: 'tx' })} aria-label="Add entry"><Icon name="plus" /></button>
         </div>
       </header>
-
-      {S.sample && <div className="banner"><span><b>Example data.</b> These numbers are made up so you can look around. Open Settings to clear them and start with your own.</span></div>}
 
       {!S.txs.length && !S.holdings.length && (
         <section className="card"><h3>Let’s set up Grow</h3>
@@ -62,7 +61,6 @@ export function HomeView() {
             <button className="row" onClick={() => openSheet({ kind: 'tx' })}><span className="sw" style={{ background: '#f2bd10' }}>2</span><span className="mid"><span className="t" style={{ display: 'block' }}>Add your first entry</span><span className="s" style={{ display: 'block' }}>An expense or income takes ten seconds</span></span><Icon name="chev" /></button>
             <Link className="row" href="/ask"><span className="sw" style={{ background: '#7cc0ff' }}>3</span><span className="mid"><span className="t" style={{ display: 'block' }}>Ask Grow about money</span><span className="s" style={{ display: 'block' }}>Budgeting, saving, loans, cards and investing</span></span><Icon name="chev" /></Link>
           </div>
-          <button className="link" style={{ marginTop: 8 }} onClick={() => replace({ ...makeSeed(), hide: S.hide })}>Or look around with example data</button>
         </section>
       )}
 

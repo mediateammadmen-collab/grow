@@ -12,6 +12,7 @@ interface Msg {
 }
 /* Kept at module level so the conversation survives switching tabs. */
 let CACHE: Msg[] = [];
+let CACHE_USER: string | null = null;
 
 const THINK = ['Reading your entries', 'Checking this month', 'Crunching the numbers', 'Comparing with your averages', 'Putting it together'];
 const TOOL_LABEL: Record<Tool, string> = { loan: 'Open Loan finder', card: 'Open Card matcher', invest: 'Open Invest planner' };
@@ -38,7 +39,8 @@ function insights(S: State): { text: string; ask: string; tone: 'good' | 'ok' | 
 }
 
 export function AskView() {
-  const { S, update, openSheet, toast } = useGrow();
+  const { S, update, openSheet, toast, user } = useGrow();
+  if (CACHE_USER !== (user?.id ?? null)) { CACHE = []; CACHE_USER = user?.id ?? null; }
   const [msgs, setMsgs] = useState<Msg[]>(CACHE);
   const [input, setInput] = useState('');
   const [thinkIdx, setThinkIdx] = useState(0);

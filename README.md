@@ -1,6 +1,12 @@
 # Grow (web)
 
-Next.js 16 + React 19 + TypeScript rebuild of the Grow PWA. Data stays in the browser (`localStorage`, key `grow.web.v2`); there is no backend yet.
+Next.js 16 + React 19 + TypeScript. Sign-in (email + password, Google) and data storage use **Supabase**.
+
+## Setup
+1. Copy `.env.example` to `.env.local` and fill in the Supabase project URL and publishable key.
+2. In Supabase → SQL Editor, run `supabase/migrations/0001_init.sql` once.
+3. Supabase → Authentication → URL Configuration: Site URL `http://localhost:3000`, Redirect URL `http://localhost:3000/**` (add your real domain when deploying).
+4. Google: OAuth client (Web) in Google Cloud with redirect URI `https://<project>.supabase.co/auth/v1/callback`; paste its ID and secret into Supabase → Sign In / Providers → Google.
 
 ```bash
 npm install
@@ -9,11 +15,14 @@ npm run build && npm start
 ```
 
 ## Layout
-- `app/` – routes: `/` home, `/daily`, `/ask`, `/history`, `/welcome`, `/login`
+- `app/` – app routes `/` `/daily` `/ask` `/history` (sign-in required); auth routes `/welcome` `/login` `/signup` `/forgot-password` `/reset-password` `/auth/callback`
 - `components/views/` – one file per screen; `components/sheets.tsx` – add/edit forms, settings, calculators
-- `lib/data.ts` – types, categories, example data, backup import (accepts old v1 backups)
+- `lib/data.ts` – types and categories
+- `lib/supabase.ts` – Supabase browser client and friendly auth error messages
+- `lib/sync.ts` – maps app state ⇄ database rows; writes only changed rows; full reconcile after offline edits
 - `lib/calc.ts` – money formatting and all derived numbers. **Money is stored as integer paisa.**
-- `lib/store.tsx` – state, persistence, toasts, sheets
+- `lib/store.tsx` – auth state, per-user cache, save queue with offline retry, toasts, sheets
+- `supabase/migrations/` – database schema with row level security
 - `lib/guide.ts` – Ask Grow's question & answer library (no AI calls)
 
 ## Adding a question to Ask Grow

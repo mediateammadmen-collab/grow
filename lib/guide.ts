@@ -29,8 +29,7 @@ const CHECK = 'Rates and terms change, so confirm the current details with the b
 const pct = (x: number) => Math.round(x * 100) + '%';
 const when = (m: number | null) => m === null ? 'more than 60 years' : m === 0 ? 'already there' : m < 12 ? `about ${m} month${m === 1 ? '' : 's'}` : `about ${(m / 12).toFixed(1)} years`;
 const daysLeftInMonth = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - d.getDate() + 1; };
-const exampleNote = (S: State) => S.sample ? '\n\n_These are example numbers. Clear them in Settings to see your own._' : '';
-const noData = 'I don’t have enough entries to go on yet. Add a few incomes and expenses (or load the example data in Settings) and ask me again.';
+const noData = 'I don’t have enough entries to go on yet. Add a few incomes and expenses and ask me again.';
 const hasData = (S: State) => S.txs.length > 0;
 
 function amountIn(raw: string): number | null {
@@ -53,7 +52,7 @@ const E: Entry[] = [
       if (!top.length) return `You haven’t recorded any expenses for ${monthLabel(mk)} yet. Add what you spend and I’ll break it down here.`;
       const lines = top.slice(0, 5).map(([c, v]) => `- **${c}**: ${money(v)} (${pct(v / exp)})`).join('\n');
       const [c1, v1] = top[0];
-      return `So far in ${monthLabel(mk)} you’ve spent **${money(exp)}**. Here’s where it went:\n${lines}\n\n**${c1}** is your biggest category at ${pct(v1 / exp)} of spending.${exampleNote(S)}`;
+      return `So far in ${monthLabel(mk)} you’ve spent **${money(exp)}**. Here’s where it went:\n${lines}\n\n**${c1}** is your biggest category at ${pct(v1 / exp)} of spending.`;
     },
   },
   {
@@ -71,7 +70,7 @@ const E: Entry[] = [
         ? `You’ve spent **${money(ce)}** in the first ${day} days of ${monthLabel(mk, true)}. There’s nothing from the same days of ${monthLabel(pk, true)} to compare with.`
         : `Comparing the first **${day} days** of each month: you’ve spent **${money(ce)}** in ${monthLabel(mk, true)} against **${money(pe)}** in ${monthLabel(pk, true)}. That’s **${money(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'}** (${diff > 0 ? '+' : '−'}${pct(Math.abs(diff) / pe)}).`;
       const mv = moves.length ? '\n\nWhat changed most:\n' + moves.map(([c, d]) => `- **${c}**: ${d > 0 ? 'up' : 'down'} ${money(Math.abs(d))}`).join('\n') : '';
-      return head + mv + (diff > 0 && pe ? '\n\nNo panic: some bills land early in the month. Check again in a week.' : diff <= 0 && pe ? '\n\nNice, you’re spending less than last month at this point.' : '') + exampleNote(S);
+      return head + mv + (diff > 0 && pe ? '\n\nNo panic: some bills land early in the month. Check again in a week.' : diff <= 0 && pe ? '\n\nNice, you’re spending less than last month at this point.' : '');
     },
   },
   {
@@ -83,7 +82,7 @@ const E: Entry[] = [
       if (!cur.length) return `No expenses recorded for ${monthLabel(nowKey())} yet.`;
       const top = cur.slice(0, 3).map(t => `- **${money(t.amount)}**: ${t.note || t.sub || t.cat} (${t.cat}, ${accName(S, t.account)})`).join('\n');
       const fixed = cur[0].sub === 'Rent' || cur[0].sub === 'Utilities';
-      return `Your three largest expenses this month:\n${top}\n\n${fixed ? 'The top one is a fixed bill, so the real room to cut is usually in the smaller, everyday spending.' : 'Big one-off purchases are fine when they’re planned. Worth asking if this one was.'}${exampleNote(S)}`;
+      return `Your three largest expenses this month:\n${top}\n\n${fixed ? 'The top one is a fixed bill, so the real room to cut is usually in the smaller, everyday spending.' : 'Big one-off purchases are fine when they’re planned. Worth asking if this one was.'}`;
     },
   },
   {
@@ -103,7 +102,7 @@ const E: Entry[] = [
       if (over.length) s += '\n\nOver the limit:\n' + over.map(([c, l]) => `- **${c}**: ${money((spent[c] || 0) - l)} over`).join('\n');
       if (near.length) s += '\n\nClose to the limit:\n' + near.map(([c, l]) => `- **${c}**: ${money(l - (spent[c] || 0))} left`).join('\n');
       if (!over.length && !near.length) s += '\n\nEvery category is comfortably within its limit.';
-      return s + exampleNote(S);
+      return s;
     },
   },
   {
@@ -116,12 +115,12 @@ const E: Entry[] = [
       if (tb > 0) {
         const left = tb - spent;
         if (left <= 0) return `You’ve already used your full monthly budget of **${money(tb)}** (spent ${money(spent)}). For the remaining **${days} days**, try to stick to essentials only.`;
-        return `You have **${money(left)}** left in your budget with **${days} days** to go (counting today).\n\nThat’s about **${money(Math.floor(left / days))} a day**.\n\nThis includes bills that haven’t landed yet, so keep a little back if rent or utilities are still due.${exampleNote(S)}`;
+        return `You have **${money(left)}** left in your budget with **${days} days** to go (counting today).\n\nThat’s about **${money(Math.floor(left / days))} a day**.\n\nThis includes bills that haven’t landed yet, so keep a little back if rent or utilities are still due.`;
       }
       const a = avgMonthly(S);
       if (!a.income) return 'Set budget limits in **Daily → Budget**, or record your income, and I can work out a daily spending number for you.';
       const target = a.income * 0.8, left = target - spent;
-      return `You haven’t set budgets, so I’ll aim for saving 20% of your usual income (**${money(a.income)}** a month).\n\nThat leaves **${money(Math.max(0, left))}** to spend over the next **${days} days**: about **${money(Math.max(0, Math.floor(left / days)))} a day**.${exampleNote(S)}`;
+      return `You haven’t set budgets, so I’ll aim for saving 20% of your usual income (**${money(a.income)}** a month).\n\nThat leaves **${money(Math.max(0, left))}** to spend over the next **${days} days**: about **${money(Math.max(0, Math.floor(left / days)))} a day**.`;
     },
   },
   {
@@ -142,7 +141,7 @@ const E: Entry[] = [
           if (m !== null && m2 !== null && m - m2 >= 1) s += ` Save 20% more each month and that drops to ${when(m2)}.`;
         }
       }
-      return s + '\n\n_That timeline is an estimate, not a promise. Real returns go up and down._' + exampleNote(S);
+      return s + '\n\n_That timeline is an estimate, not a promise. Real returns go up and down._';
     },
   },
   {
@@ -153,7 +152,7 @@ const E: Entry[] = [
       const b = balances(S);
       const rows = S.accounts.map(a => `- **${a.name}**: ${money(b[a.id] || 0)}`).join('\n');
       const neg = S.accounts.filter(a => (b[a.id] || 0) < 0);
-      return `Here are your balances right now:\n${rows}\n\nTotal: **${money(liquid(S))}**.${neg.length ? `\n\n${neg.map(a => a.name).join(', ')} shows a negative balance. Usually that means a missing income entry or an opening balance that isn’t set. Check **Settings → Opening balances**.` : ''}${exampleNote(S)}`;
+      return `Here are your balances right now:\n${rows}\n\nTotal: **${money(liquid(S))}**.${neg.length ? `\n\n${neg.map(a => a.name).join(', ')} shows a negative balance. Usually that means a missing income entry or an opening balance that isn’t set. Check **Settings → Opening balances**.` : ''}`;
     },
   },
   {
@@ -168,7 +167,7 @@ const E: Entry[] = [
       if (spare >= amt) s += `**Yes, you can pay cash.** You’d still have ${money(cash - amt)} left, which keeps your cushion intact.`;
       else if (a.saving > 0) { const m = Math.ceil((amt - Math.max(0, spare)) / a.saving); s += `**Not comfortably yet.** Buying now would eat into your safety cushion. At your saving pace of ${money(a.saving)}/month you could buy it in about **${m} month${m === 1 ? '' : 's'}** without touching it.`; }
       else s += '**I’d wait.** You’re not saving each month right now, so this would come straight out of your safety cushion.';
-      return s + '\n\nIf you’re thinking of an EMI or card instalment instead, compare the total cost in the **Loan finder** first.' + exampleNote(S);
+      return s + '\n\nIf you’re thinking of an EMI or card instalment instead, compare the total cost in the **Loan finder** first.';
     },
   },
 
@@ -190,7 +189,7 @@ const E: Entry[] = [
       const ride = monthTx(S, nowKey()).filter(t => t.cat === 'Transport');
       if (ride.length >= 4) s += `- **${ride.length} transport trips** so far. Combining errands or a monthly pass might help.\n`;
       s += `- Set up an automatic transfer on salary day of **${money(Math.round(Math.max(c.a.income * 0.2, 0) / 10000) * 10000)}** (20% of your usual income) into a separate account.`;
-      return s + exampleNote(S);
+      return s;
     },
   },
   {
@@ -202,7 +201,7 @@ const E: Entry[] = [
       if (!a.income) return 'Your savings rate is the share of income you keep: (income − spending) ÷ income. Add your income and expenses and I’ll calculate yours.';
       const r = (a.income - a.expense) / a.income;
       const verdict = r >= 0.3 ? 'excellent' : r >= 0.2 ? 'healthy' : r >= 0.1 ? 'a decent start' : r >= 0 ? 'on the low side' : 'negative, meaning you spend more than you earn';
-      return `Over your last ${Math.max(1, a.months)} full month${a.months === 1 ? '' : 's'} you earned about **${money(a.income)}** and spent **${money(a.expense)}** a month.\n\nThat’s a savings rate of **${pct(r)}**, which is ${verdict}.\n\n- 10%: building the habit\n- 20%: the common target\n- 30%+: fast track to financial freedom${exampleNote(S)}`;
+      return `Over your last ${Math.max(1, a.months)} full month${a.months === 1 ? '' : 's'} you earned about **${money(a.income)}** and spent **${money(a.expense)}** a month.\n\nThat’s a savings rate of **${pct(r)}**, which is ${verdict}.\n\n- 10%: building the habit\n- 20%: the common target\n- 30%+: fast track to financial freedom`;
     },
   },
   {
@@ -217,7 +216,7 @@ const E: Entry[] = [
       s += c.em >= 6 ? '**You’re well covered.** Money beyond 6 months could be working harder in investments. Ask me how to invest your savings.'
         : c.em >= 3 ? `**You’re in the safe zone.** Building up to 6 months (${money(target)}) would make you even more resilient.`
           : `**This is the first thing to build.** Aim for at least 3 months (${money(c.a.expense * 3)}) before investing in anything risky.`;
-      return s + '\n\nKeep it somewhere you can reach within a day or two, like a savings account or a short fixed deposit, not in stocks.' + exampleNote(S);
+      return s + '\n\nKeep it somewhere you can reach within a day or two, like a savings account or a short fixed deposit, not in stocks.';
     },
   },
   {
@@ -251,7 +250,7 @@ const E: Entry[] = [
       const t = invTotals(S);
       const rows = S.holdings.slice().sort((a, b) => b.value - a.value).map(h => { const g = h.invested ? (h.value - h.invested) / h.invested : 0; return `- **${h.name}**: ${money(h.value)} (${g >= 0 ? '+' : ''}${(g * 100).toFixed(1)}%)`; }).join('\n');
       const best = S.holdings.filter(h => h.invested).sort((a, b) => (b.value / b.invested) - (a.value / a.invested))[0];
-      return `Your investments are worth **${money(t.value)}** against **${money(t.invested)}** put in, a total ${t.gain >= 0 ? 'gain' : 'loss'} of **${money(Math.abs(t.gain))}** (${t.gain >= 0 ? '+' : ''}${t.pct.toFixed(1)}%).\n\n${rows}${best ? `\n\nStrongest performer: **${best.name}**.` : ''}\n\nRemember: these are values you entered, so update them now and then to keep this accurate.${exampleNote(S)}`;
+      return `Your investments are worth **${money(t.value)}** against **${money(t.invested)}** put in, a total ${t.gain >= 0 ? 'gain' : 'loss'} of **${money(Math.abs(t.gain))}** (${t.gain >= 0 ? '+' : ''}${t.pct.toFixed(1)}%).\n\n${rows}${best ? `\n\nStrongest performer: **${best.name}**.` : ''}\n\nRemember: these are values you entered, so update them now and then to keep this accurate.`;
     },
   },
   {
@@ -305,7 +304,7 @@ const E: Entry[] = [
     follow: ['invest', 'inflation'],
     answer: S => {
       const g = S.holdings.filter(h => h.type === 'Gold').reduce((a, h) => a + h.value, 0), tot = Object.values(allocation(S)).reduce((a, b) => a + b, 0);
-      return `Gold is a **store of value**. It tends to hold up when currencies or markets struggle, but it pays no interest or dividends.\n\n- **Jewellery** carries making charges you won’t get back when selling\n- **Bars or coins** are closer to the pure gold price\n- Prices can swing a lot over months\n\nMany planners suggest keeping gold to around **5–10%** of your investments.${g && tot ? ` Yours is currently **${pct(g / tot)}** of your total.` : ''}${exampleNote(S)}`;
+      return `Gold is a **store of value**. It tends to hold up when currencies or markets struggle, but it pays no interest or dividends.\n\n- **Jewellery** carries making charges you won’t get back when selling\n- **Bars or coins** are closer to the pure gold price\n- Prices can swing a lot over months\n\nMany planners suggest keeping gold to around **5–10%** of your investments.${g && tot ? ` Yours is currently **${pct(g / tot)}** of your total.` : ''}`;
     },
   },
   {
@@ -460,7 +459,7 @@ function categorySpend(S: State, text: string): Reply | null {
   if (lim) t += c > lim ? `\n\nThat’s **${money(c - lim)} over** your ${cat} budget of ${money(lim)}.` : `\n\nYou have **${money(lim - c)}** left of your ${money(lim)} ${cat} budget.`;
   const top = cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 3);
   if (top.length > 1) t += '\n\nLargest this month:\n' + top.map(x => `- ${money(x.amount)}: ${x.note || x.sub}`).join('\n');
-  return { text: t + exampleNote(S), follow: ['budget', 'save', 'compare'] };
+  return { text: t, follow: ['budget', 'save', 'compare'] };
 }
 
 /* ---------------- main entry ---------------- */

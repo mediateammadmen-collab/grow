@@ -2,7 +2,7 @@
 import { Fragment, type ReactNode } from 'react';
 import { catColor, type State, type Tx } from '@/lib/data';
 import { accName, compact, dayLabel, money, monthLabel } from '@/lib/calc';
-import { useGrow } from '@/lib/store';
+import { useGrow, type SyncState } from '@/lib/store';
 
 const PATHS: Record<string, ReactNode> = {
   home: <path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
@@ -125,3 +125,11 @@ export function TxRow({ S, t, showDate }: { S: State; t: Tx; showDate?: boolean 
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return <div className="empty"><b>{title}</b>{children}</div>;
 }
+
+export const SYNC_LABEL: Record<SyncState, string> = { saved: 'All changes saved', saving: 'Saving…', offline: 'Offline · saved on this device', error: 'Not synced yet · retrying' };
+
+export function Avatar({ name, url, size = 34 }: { name: string; url?: string; size?: number }) {
+  if (url) return <img className="avatar" src={url} alt="" width={size} height={size} referrerPolicy="no-referrer" />;
+  return <span className="avatar" style={{ width: size, height: size }}>{(name || '?').charAt(0).toUpperCase()}</span>;
+}
+

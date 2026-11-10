@@ -276,7 +276,6 @@ body.onb #bg{display:block}
 a{color:inherit;text-decoration:none}
 a.btn,a.row,a.iconbtn{text-decoration:none}
 a.row{color:var(--ink)}
-.boot{height:100vh}
 .shell{max-width:560px;height:100%;margin:0 auto;display:flex;flex-direction:column;position:relative;z-index:1}
 .side{display:none}
 .desk{display:none}
@@ -321,6 +320,37 @@ body.onb{overflow-y:auto}
 .askcta .ti{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#0d8a5f,#38b6e8)}
 .askcta>svg:last-child{margin-left:auto;color:var(--muted)}
 
+/* ===================== Accounts & auth ===================== */
+.boot{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px}
+.boot.center{text-align:center}
+.af{display:flex;flex-direction:column;gap:6px}
+.af>span:first-child{font-size:13px;font-weight:600;color:var(--muted)}
+.af input{width:100%;min-height:48px;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:0 14px;font-size:16px}
+.af input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.pw{position:relative;display:block}
+.pw input{padding-right:48px}
+.pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:var(--muted)}
+.pw button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.af-row{display:flex;justify-content:flex-end;margin-top:-4px}
+.okmsg{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:10px 12px;font-size:13.5px;margin:0}
+.err:empty{display:none}
+.gbtn{gap:10px;min-height:50px}
+.btn:disabled{opacity:.6;cursor:default}
+a.btn[aria-disabled="true"]{pointer-events:none;opacity:.6}
+.avatar{border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;background:var(--accent-soft);color:var(--accent);object-fit:cover}
+.syncdot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:500}
+.syncdot::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--inc);flex:none}
+.syncdot.saving::before{background:var(--warn);animation:blink 1s infinite}
+.syncdot.offline::before,.syncdot.error::before{background:var(--exp)}
+.acct{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:16px;margin-top:4px}
+.acct .mid{display:flex;flex-direction:column;gap:2px;min-width:0}
+.acct .mid>*{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-user{display:flex;align-items:center;gap:10px;margin-top:auto;padding:10px;border-radius:14px;text-align:left;color:var(--muted)}
+.side-user:hover{background:var(--surface2)}
+.side-user .mid{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.side-user b{color:var(--ink);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-user .syncdot{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* ===================== Desktop ===================== */
 @media (min-width:960px){
   body{padding:0}
@@ -331,8 +361,6 @@ body.onb{overflow-y:auto}
   .side nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;color:var(--muted);font-weight:600}
   .side nav a:hover{background:var(--surface2);color:var(--ink)}
   .side nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
-  .side-set{display:flex;align-items:center;gap:10px;margin-top:auto;padding:11px 12px;border-radius:14px;color:var(--muted);font-weight:600}
-  .side-set:hover{background:var(--surface2);color:var(--ink)}
   #view{padding:26px 34px 40px;height:100vh}
   #nav,.fab,.mob{display:none!important}
   .desk{display:block}
